@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: places-service
+  
+  cache:
+    type: simple
+    cache-names: places
+
+server:
+  port: 8082
+
+google:
+  places:
+    api:
+      key: ${GOOGLE_PLACES_API_KEY:your-google-places-api-key}
+      base-url: https://maps.googleapis.com/maps/api/place
+      default-radius: 5000 # meters
+      max-radius: 50000 # meters
+
+places:
+  cache:
+    enabled: ${CACHE_ENABLED:true}
+    ttl:
+      search: 3600 # 1 hour in seconds
+      detail: 86400 # 24 hours in seconds
+
+logging:
+  level:
+    com.safarmate: ${LOG_LEVEL:INFO}
+    org.springframework.web: ${WEB_LOG_LEVEL:INFO}

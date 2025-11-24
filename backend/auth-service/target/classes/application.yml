@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: auth-service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/safarimate
+    username: safarimate_user
+    password: safarimate_pass
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  flyway:
+    enabled: false
+
+server:
+  port: ${SERVER_PORT:8085}
+
+jwt:
+  secret: ${JWT_SECRET:YjNhNzQ0ZDgzNzM3MmE0ZGI4NTU4YzQ2ZDJkZjIzYzMyOWRiZDI3YTc2ZTg1NDQ3MDY4YmI5NDE4Y2ZmZjQzYQ==}
+  expiration: ${JWT_EXPIRATION:900000} # 15 minutes in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
+
+logging:
+  level:
+    com.safarmate: ${LOG_LEVEL:INFO}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}

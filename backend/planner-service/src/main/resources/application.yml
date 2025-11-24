@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: planner-service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/safarimate
+    username: safarimate_user
+    password: safarimate_pass
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  flyway:
+    enabled: false
+
+server:
+  port: 8084
+
+logging:
+  level:
+    com.safarmate: ${LOG_LEVEL:INFO}
+    org.springframework.web: ${WEB_LOG_LEVEL:INFO}
+    org.hibernate: ${HIBERNATE_LOG_LEVEL:WARN}

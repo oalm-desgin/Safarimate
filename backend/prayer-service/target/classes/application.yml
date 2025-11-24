@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: prayer-service
+  
+  cache:
+    type: simple
+    cache-names: prayer-times,qibla
+
+server:
+  port: 8083
+
+aladhan:
+  api:
+    key: ${ALADHAN_API_KEY:}
+    base-url: https://api.aladhan.com/v1
+    timeout: 5000 # milliseconds
+
+prayer:
+  cache:
+    enabled: ${CACHE_ENABLED:true}
+    ttl:
+      times: 86400 # 24 hours in seconds
+      qibla: 604800 # 7 days in seconds
+
+qibla:
+  kaaba:
+    latitude: 21.4225241
+    longitude: 39.8261818
+
+logging:
+  level:
+    com.safarmate: ${LOG_LEVEL:INFO}
+    org.springframework.web: ${WEB_LOG_LEVEL:INFO}

@@ -1,0 +1,13 @@
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\controller\AuthController.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\dto\AuthResponse.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\dto\LoginRequest.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\dto\SignupRequest.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\dto\UserDto.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\entity\User.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\repository\UserRepository.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\service\AuthService.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\service\UserService.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\auth\util\JwtTokenProvider.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\authservice\AuthServiceApplication.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\authservice\config\JwtConfig.java
+C:\Users\Neyma\Downloads\SafariMate\backend\auth-service\src\main\java\com\safarmate\authservice\config\SecurityConfig.java

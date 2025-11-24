@@ -1,0 +1,14 @@
+package com.safarmate.planner;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+@SpringBootApplication
+@EnableJpaAuditing
+public class PlannerServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(PlannerServiceApplication.class, args);
+    }
+}
+
