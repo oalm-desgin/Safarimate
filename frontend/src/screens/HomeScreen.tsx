@@ -1,237 +1,235 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
-import HeaderGradient from '../components/UI/HeaderGradient'
-import FeatureCard from '../components/UI/FeatureCard'
-import PrayerCard from '../components/UI/PrayerCard'
-import Loading from '../components/Loading'
-import ErrorMessage from '../components/ErrorMessage'
-import { MapPin, Clock, Calendar, Compass } from 'lucide-react'
-import placesApi from '../api/placesApi'
-import { getTodayPrayerTimes } from '../api/prayerApi'
+import { Clock, MapPin, Plane, User } from 'lucide-react'
+import { useTravelStore } from '../store/travelStore'
+import { getCityCoordinates } from '../data/cityData'
+import { DateTime } from 'luxon'
+import CalligraphyPattern from '../components/UI/CalligraphyPattern'
 
-interface Place {
-  id: string
-  name: string
-  type: string
-  address: string
-  rating?: number
-  distanceMeters?: number
-}
-
-interface PrayerTime {
-  name: string
-  time: string
-  isNext?: boolean
+interface PrayerTimes {
+  Fajr: string
+  Dhuhr: string
+  Asr: string
+  Maghrib: string
+  Isha: string
 }
 
 export default function HomeScreen() {
   const navigate = useNavigate()
-  const user = useAuthStore((state) => state.user)
-  const [places, setPlaces] = useState<Place[]>([])
-  const [loadingPlaces, setLoadingPlaces] = useState(false)
-  const [placesError, setPlacesError] = useState<string | null>(null)
-  const [prayerTimes, setPrayerTimes] = useState<PrayerTime[]>([])
-  const [prayerLoading, setPrayerLoading] = useState(false)
-  const [prayerError, setPrayerError] = useState('')
+  const { destinationCity, hasActiveTrip } = useTravelStore()
+  const [nextPrayer, setNextPrayer] = useState<{ name: string; time: string; remaining: string } | null>(null)
+  const [currentDate, setCurrentDate] = useState({ hijri: '', gregorian: '' })
+  const [userName, setUserName] = useState('Guest')
 
   useEffect(() => {
-    fetchNearbyPlaces()
-    fetchPrayerTimes()
-  }, [])
+    loadPrayerData()
+    updateDateTime()
+    const interval = setInterval(() => {
+      loadPrayerData()
+      updateDateTime()
+    }, 60000) // Update every minute
+    return () => clearInterval(interval)
+  }, [destinationCity, hasActiveTrip])
 
-  const fetchNearbyPlaces = async () => {
-    setLoadingPlaces(true)
-    setPlacesError(null)
-
+  const loadPrayerData = async () => {
     try {
-      const res = await placesApi.get<Place[]>('/places/nearby')
-      setPlaces(res.data)
-    } catch (err: any) {
-      setPlacesError(
-        err.response?.data?.message ??
-          err.message ??
-          'Failed to load nearby places'
-      )
-    } finally {
-      setLoadingPlaces(false)
-    }
-  }
+      let lat = 45.5017
+      let lng = -73.5673
 
-  async function fetchPrayerTimes() {
-    setPrayerLoading(true)
-    setPrayerError('')
-    try {
-      // Default to Makkah coordinates (21.3891, 39.8579)
-      const lat = 21.3891
-      const lng = 39.8579
-      const response = await getTodayPrayerTimes(lat, lng)
-      const data = response.data
-
-      // Map the response to prayer times array
-      const prayers: PrayerTime[] = []
-      if (data.fajr) prayers.push({ name: 'Fajr', time: formatTime(data.fajr) })
-      if (data.dhuhr) prayers.push({ name: 'Dhuhr', time: formatTime(data.dhuhr) })
-      if (data.asr) prayers.push({ name: 'Asr', time: formatTime(data.asr) })
-      if (data.maghrib) prayers.push({ name: 'Maghrib', time: formatTime(data.maghrib) })
-      if (data.isha) prayers.push({ name: 'Isha', time: formatTime(data.isha) })
-
-      // Mark the next prayer
-      const now = new Date()
-      const currentTime = now.getHours() * 60 + now.getMinutes()
-      
-      let nextPrayerIndex = -1
-      for (let i = 0; i < prayers.length; i++) {
-        const [hours, minutes] = prayers[i].time.split(':').map(Number)
-        const prayerTime = hours * 60 + minutes
-        if (prayerTime > currentTime) {
-          nextPrayerIndex = i
-          break
+      // Use destination coordinates if trip is active
+      if (hasActiveTrip() && destinationCity) {
+        const destCoords = getCityCoordinates(destinationCity)
+        if (destCoords) {
+          lat = destCoords.lat
+          lng = destCoords.lng
         }
       }
 
-      if (nextPrayerIndex >= 0) {
-        prayers[nextPrayerIndex].isNext = true
+      const response = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}`)
+      const data = await response.json()
+      
+      if (data.code === 200) {
+        const times: PrayerTimes = data.data.timings
+        calculateNextPrayer(times)
       }
-
-      setPrayerTimes(prayers)
-    } catch (err: any) {
-      setPrayerError(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to load prayer times'
-      )
-      setPrayerTimes([])
-    } finally {
-      setPrayerLoading(false)
+    } catch (error) {
+      console.error('Error fetching prayer times:', error)
     }
   }
 
-  function formatTime(time: string | Date): string {
-    if (typeof time === 'string') {
-      // If it's already formatted, return as is
-      if (time.includes(':')) {
-        return time.substring(0, 5) // Return HH:MM format
+  const calculateNextPrayer = (times: PrayerTimes) => {
+    const now = new Date()
+    const prayers = [
+      { name: 'Fajr', time: times.Fajr },
+      { name: 'Dhuhr', time: times.Dhuhr },
+      { name: 'Asr', time: times.Asr },
+      { name: 'Maghrib', time: times.Maghrib },
+      { name: 'Isha', time: times.Isha },
+    ]
+
+    for (const prayer of prayers) {
+      const [hours, minutes] = prayer.time.split(':').map(Number)
+      const prayerTime = new Date(now)
+      prayerTime.setHours(hours, minutes, 0, 0)
+
+      if (prayerTime > now) {
+        const diff = prayerTime.getTime() - now.getTime()
+        const hoursRemaining = Math.floor(diff / (1000 * 60 * 60))
+        const minutesRemaining = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+        
+        setNextPrayer({
+          name: prayer.name,
+          time: prayer.time,
+          remaining: `${hoursRemaining.toString().padStart(2, '0')}:${minutesRemaining.toString().padStart(2, '0')}`
+        })
+        return
       }
     }
-    // If it's a Date object or ISO string, format it
-    const date = new Date(time)
-    const hours = date.getHours().toString().padStart(2, '0')
-    const minutes = date.getMinutes().toString().padStart(2, '0')
-    return `${hours}:${minutes}`
+
+    // If no prayer found today, set to Fajr tomorrow
+    setNextPrayer({
+      name: 'Fajr',
+      time: times.Fajr,
+      remaining: 'Tomorrow'
+    })
+  }
+
+  const updateDateTime = () => {
+    const now = DateTime.now()
+    const gregorian = now.toFormat('EEEE, MMMM d, yyyy')
+    const hijri = '3 Jumada al-Thani 1447 AH' // Mock - use proper Hijri calendar library
+    setCurrentDate({ hijri, gregorian })
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <HeaderGradient
-        title={`Assalamu Alaikum, ${user?.name || 'Traveler'}`}
-        subtitle="Your journey companion"
-      />
+    <div className="min-h-screen pb-24 relative">
+      <CalligraphyPattern opacity={0.15} />
       
-      <div className="px-6 py-6 space-y-6">
-        {/* Feature Grid */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Access</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <FeatureCard
-              icon={MapPin}
-              title="Nearby Mosques Map"
-              description="Interactive map view"
-              onClick={() => navigate('/map')}
-            />
-            <FeatureCard
-              icon={Clock}
-              title="Prayer Times"
-              description="Today's schedule"
-              onClick={() => navigate('/prayer')}
-            />
-            <FeatureCard
-              icon={Compass}
-              title="Qibla"
-              description="Find direction"
-              onClick={() => navigate('/prayer')}
-            />
-            <FeatureCard
-              icon={Calendar}
-              title="Trip Planner"
-              description="Plan your journey"
-              onClick={() => navigate('/trips')}
-            />
+      <div className="relative z-10 px-6 py-8">
+        {/* Greeting */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Assalamu Alaikum, {userName}
+          </h1>
+          <div className="space-y-1">
+            <p className="text-sm text-gray-300">{currentDate.gregorian}</p>
+            <p className="text-sm text-gold">{currentDate.hijri}</p>
           </div>
         </div>
 
-        {/* Halal Places */}
-        <section className="mt-4">
-          <h2 className="mb-2 text-lg font-semibold text-gray-900">
-            Halal Places
-          </h2>
-
-          {loadingPlaces && (
-            <p className="text-sm text-gray-500">Loading nearby places...</p>
-          )}
-
-          {placesError && (
-            <p className="text-sm text-red-500">{placesError}</p>
-          )}
-
-          {!loadingPlaces && !placesError && places.length === 0 && (
-            <p className="text-sm text-gray-500">No places found nearby.</p>
-          )}
-
-          <div className="mt-2 space-y-3">
-            {places.map((place) => (
-              <div
-                key={place.id}
-                className="rounded-xl bg-white p-3 shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {place.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {place.type} • {place.address}
-                    </p>
-                  </div>
-                  {place.rating && (
-                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
-                      {place.rating.toFixed(1)} ★
-                    </span>
-                  )}
-                </div>
-                {place.distanceMeters !== undefined && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    {(place.distanceMeters / 1000).toFixed(1)} km away
-                  </p>
-                )}
+        {/* Next Prayer Card */}
+        {nextPrayer && (
+          <div 
+            className="rounded-xl p-6 mb-8 relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(14, 79, 69, 0.9) 0%, rgba(10, 46, 41, 0.95) 100%)',
+              boxShadow: '0 8px 32px rgba(217, 193, 122, 0.15)'
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-gold/5 to-transparent" />
+            <div className="relative z-10">
+              <p className="text-sm text-gray-300 mb-2">Next Prayer</p>
+              <h2 className="text-4xl font-bold text-white mb-2">{nextPrayer.name}</h2>
+              <div className="h-px bg-gold/30 w-16 mb-3" />
+              <div className="flex items-baseline gap-2">
+                <p className="text-5xl font-bold text-gold">{nextPrayer.remaining}</p>
+                <p className="text-lg text-gray-300">at {nextPrayer.time}</p>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Prayer Times Card */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Today's Prayers</h2>
-          {prayerLoading && <Loading message="Loading prayer times..." />}
-          {prayerError && <ErrorMessage message={prayerError} />}
-          {!prayerLoading && !prayerError && prayerTimes.length === 0 && (
-            <div className="text-center py-4 text-gray-600">No prayer times available</div>
-          )}
-          {!prayerLoading && prayerTimes.length > 0 && (
-            <div className="space-y-3">
-              {prayerTimes.map((prayer, index) => (
-                <PrayerCard
-                  key={prayer.name}
-                  name={prayer.name}
-                  time={prayer.time}
-                  isNext={prayer.isNext}
-                />
-              ))}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Main Navigation Grid - 2x2 matching bottom tab bar */}
+        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+          {/* Places */}
+          <button
+            onClick={() => navigate('/places')}
+            className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl transition-all hover:scale-[1.02]"
+            style={{
+              background: 'rgba(14, 79, 69, 0.6)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: 'rgba(217, 193, 122, 0.15)',
+                border: '1px solid rgba(217, 193, 122, 0.3)'
+              }}
+            >
+              <MapPin className="w-8 h-8 text-gold" strokeWidth={1.5} />
+            </div>
+            <span className="text-white font-semibold text-base">Places</span>
+          </button>
+
+          {/* Prayer */}
+          <button
+            onClick={() => navigate('/prayer-times')}
+            className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl transition-all hover:scale-[1.02]"
+            style={{
+              background: 'rgba(14, 79, 69, 0.6)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: 'rgba(217, 193, 122, 0.15)',
+                border: '1px solid rgba(217, 193, 122, 0.3)'
+              }}
+            >
+              <Clock className="w-8 h-8 text-gold" strokeWidth={1.5} />
+            </div>
+            <span className="text-white font-semibold text-base">Prayer</span>
+          </button>
+
+          {/* Trips */}
+          <button
+            onClick={() => navigate('/trips')}
+            className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl transition-all hover:scale-[1.02]"
+            style={{
+              background: 'rgba(14, 79, 69, 0.6)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: 'rgba(217, 193, 122, 0.15)',
+                border: '1px solid rgba(217, 193, 122, 0.3)'
+              }}
+            >
+              <Plane className="w-8 h-8 text-gold" strokeWidth={1.5} />
+            </div>
+            <span className="text-white font-semibold text-base">Trips</span>
+          </button>
+
+          {/* Profile */}
+          <button
+            onClick={() => navigate('/profile')}
+            className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl transition-all hover:scale-[1.02]"
+            style={{
+              background: 'rgba(14, 79, 69, 0.6)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: 'rgba(217, 193, 122, 0.15)',
+                border: '1px solid rgba(217, 193, 122, 0.3)'
+              }}
+            >
+              <User className="w-8 h-8 text-gold" strokeWidth={1.5} />
+            </div>
+            <span className="text-white font-semibold text-base">Profile</span>
+          </button>
         </div>
       </div>
     </div>
   )
 }
-

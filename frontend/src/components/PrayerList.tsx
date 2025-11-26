@@ -11,80 +11,70 @@ interface PrayerListProps {
   prayers: PrayerTime[]
 }
 
+// Prayer emoji mapping
+const getPrayerEmoji = (prayerName: string): string => {
+  const emojiMap: { [key: string]: string } = {
+    'Fajr': '🌅',
+    'Sunrise': '🌅',
+    'Dhuhr': '☀️',
+    'Asr': '🌤️',
+    'Maghrib': '🌇',
+    'Isha': '🌙'
+  }
+  return emojiMap[prayerName] || '🕌'
+}
+
 export default function PrayerList({ prayers }: PrayerListProps) {
   return (
-    <div className="bg-gray-50 min-h-screen pb-20">
-      <div className="px-4 py-4 space-y-3">
-        {prayers.map((prayer) => (
-          <div
-            key={prayer.name}
-            className={`bg-white rounded-2xl p-5 shadow-sm transition-all ${
-              prayer.isNext
-                ? 'border-2 border-primary bg-gradient-to-r from-primary/5 to-transparent'
-                : 'border border-gray-100'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              {/* Prayer Name and Times */}
-              <div className="flex-grow">
-                <div className="flex items-baseline gap-3">
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    {prayer.name}
-                  </h3>
-                  {prayer.isNext && (
-                    <span className="text-xs font-medium text-primary px-2 py-1 bg-primary/10 rounded-full">
-                      Next Prayer
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-4 mt-2">
-                  {/* Main Time */}
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {prayer.time.split(':')[0]}
-                    </span>
-                    <span className="text-3xl font-bold text-gray-900">:</span>
-                    <span className="text-3xl font-bold text-gray-900">
-                      {prayer.time.split(':')[1]}
-                    </span>
-                    <span className="text-xs font-medium text-gray-500 ml-1 uppercase">
-                      {parseInt(prayer.time.split(':')[0]) < 12 ? 'AM' : 'PM'}
-                    </span>
-                  </div>
-
-                  {/* Iqamah Time */}
-                  {prayer.iqamah && (
-                    <div className="text-sm text-gray-600 ml-4">
-                      {prayer.iqamah}
-                    </div>
-                  )}
-                </div>
+    <div className="px-6 space-y-3 mt-6 pb-24">
+      {prayers.map((prayer) => (
+        <div
+          key={prayer.name}
+          className={`rounded-xl p-5 transition-all ${
+            prayer.isNext
+              ? 'border-2 border-gold'
+              : 'border border-gold/10'
+          }`}
+          style={{
+            background: prayer.isNext 
+              ? 'rgba(14, 79, 69, 0.9)' 
+              : 'rgba(14, 79, 69, 0.5)',
+            boxShadow: prayer.isNext 
+              ? '0 8px 32px rgba(217, 193, 122, 0.25)' 
+              : '0 4px 16px rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                {/* Prayer Emoji */}
+                <span className="text-2xl" style={{ filter: prayer.isNext ? 'brightness(1.2) contrast(1.1)' : 'brightness(0.9)' }}>
+                  {getPrayerEmoji(prayer.name)}
+                </span>
+                
+                <h3 className={`text-xl font-bold ${prayer.isNext ? 'text-gold' : 'text-white'}`}>
+                  {prayer.name}
+                </h3>
+                {prayer.isNext && (
+                  <span className="text-xs font-medium text-gold px-2 py-1 bg-gold/10 rounded-full">
+                    Next
+                  </span>
+                )}
               </div>
-
-              {/* Mute Icon */}
-              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
-                <BellOff size={20} className="text-gray-400" />
+              <p className="text-sm text-gray-300 ml-11">{prayer.iqamah || '+10 min'}</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <p className={`text-3xl font-bold ${prayer.isNext ? 'text-gold' : 'text-white'}`}>
+                {prayer.time}
+              </p>
+              <button className="p-2 rounded-full hover:bg-gold/10 transition-colors">
+                <BellOff size={20} className="text-gray-400" strokeWidth={1.5} />
               </button>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Footer Info */}
-      <div className="px-4 pb-4">
-        <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
-          <div className="flex items-center gap-2">
-            <BellOff size={14} />
-            <span>Sunrise 7:14</span>
-          </div>
-          <span className="text-gray-300">|</span>
-          <span>Jum'a 12:00</span>
-          <span className="text-gray-300">|</span>
-          <span>1:15</span>
         </div>
-      </div>
+      ))}
     </div>
   )
 }
-

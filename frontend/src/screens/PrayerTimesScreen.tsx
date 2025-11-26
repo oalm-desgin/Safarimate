@@ -1,152 +1,134 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from '../hooks/useLocation'
-import { fetchPrayerTimes } from '../api/osmService'
-import { getNextPrayer } from '../hooks/useNextPrayerTimer'
 import PrayerHeader from '../components/PrayerHeader'
-import PrayerTabs from '../components/PrayerTabs'
 import PrayerList from '../components/PrayerList'
+import { useTravelStore } from '../store/travelStore'
+import { getCityCoordinates } from '../data/cityData'
+import CalligraphyPattern from '../components/UI/CalligraphyPattern'
 
-interface PrayerTimes {
-  fajr: string
-  dhuhr: string
-  asr: string
-  maghrib: string
-  isha: string
+interface PrayerTime {
+  name: string
+  time: string
+  iqamah?: string
+  isNext?: boolean
 }
 
 export default function PrayerTimesScreen() {
   const location = useLocation()
-  const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null)
+  const { destinationCity, hasActiveTrip } = useTravelStore()
+  const [prayerTimes, setPrayerTimes] = useState<PrayerTime[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'times' | 'information' | 'news' | 'calendar'>('times')
+  const [locationName, setLocationName] = useState('Your Local Mosque')
 
   useEffect(() => {
     loadPrayerTimes()
-  }, [location.latitude, location.longitude])
+  }, [location.latitude, location.longitude, destinationCity])
 
   const loadPrayerTimes = async () => {
-    if (location.latitude && location.longitude) {
-      setLoading(true)
-      try {
-        const times = await fetchPrayerTimes(location.latitude, location.longitude)
-        setPrayerTimes(times)
-      } catch (error) {
-        console.error('Error fetching prayer times:', error)
-      } finally {
-        setLoading(false)
+    let lat: number = 45.5017 // Montreal fallback
+    let lng: number = -73.5673
+    let locName = 'Your Local Mosque'
+
+    // Priority: Use destination coordinates if trip is active
+    if (hasActiveTrip() && destinationCity) {
+      const destCoords = getCityCoordinates(destinationCity)
+      if (destCoords) {
+        lat = destCoords.lat
+        lng = destCoords.lng
+        locName = `${destinationCity} Mosque`
       }
-    } else {
-      // Use fallback prayer times even without location
-      setPrayerTimes({
-        fajr: '05:30',
-        dhuhr: '12:15',
-        asr: '15:45',
-        maghrib: '18:20',
-        isha: '19:52',
-      })
+    } else if (location.latitude && location.longitude) {
+      // Use GPS location
+      lat = location.latitude
+      lng = location.longitude
+      locName = 'Your Local Mosque'
+    }
+
+    setLocationName(locName)
+    setLoading(true)
+
+    try {
+      const response = await fetch(
+        `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}`
+      )
+      const data = await response.json()
+
+      if (data.code === 200) {
+        const times = data.data.timings
+        const formattedPrayers: PrayerTime[] = [
+          { name: 'Fajr', time: times.Fajr, iqamah: '+10 min' },
+          { name: 'Dhuhr', time: times.Dhuhr, iqamah: '+15 min' },
+          { name: 'Asr', time: times.Asr, iqamah: '+10 min' },
+          { name: 'Maghrib', time: times.Maghrib, iqamah: '+5 min' },
+          { name: 'Isha', time: times.Isha, iqamah: '+15 min' },
+        ]
+
+        // Determine next prayer
+        const now = new Date()
+        let nextPrayerFound = false
+
+        for (const prayer of formattedPrayers) {
+          const [hours, minutes] = prayer.time.split(':').map(Number)
+          const prayerTime = new Date(now)
+          prayerTime.setHours(hours, minutes, 0, 0)
+
+          if (!nextPrayerFound && prayerTime > now) {
+            prayer.isNext = true
+            nextPrayerFound = true
+          }
+        }
+
+        // If no next prayer found today, mark Fajr as next
+        if (!nextPrayerFound && formattedPrayers.length > 0) {
+          formattedPrayers[0].isNext = true
+        }
+
+        setPrayerTimes(formattedPrayers)
+      }
+    } catch (error) {
+      console.error('Error fetching prayer times:', error)
+      // Fallback times
+      setPrayerTimes([
+        { name: 'Fajr', time: '05:30', iqamah: '+10 min', isNext: false },
+        { name: 'Dhuhr', time: '12:15', iqamah: '+15 min', isNext: false },
+        { name: 'Asr', time: '15:45', iqamah: '+10 min', isNext: true },
+        { name: 'Maghrib', time: '18:20', iqamah: '+5 min', isNext: false },
+        { name: 'Isha', time: '19:52', iqamah: '+15 min', isNext: false },
+      ])
+    } finally {
       setLoading(false)
     }
   }
 
-  // Get current Hijri and Gregorian dates
-  const getFormattedDates = () => {
-    const now = new Date()
-    const gregorian = now.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      day: 'numeric', 
-      month: 'short' 
-    })
-    
-    // Mock Hijri date (in production, use proper Hijri calendar library)
-    const hijriDate = '3 Jumadal Akhira 1447'
-    
-    return { hijriDate, gregorian }
-  }
-
-  const { hijriDate, gregorian } = getFormattedDates()
-
-  // Get next prayer
-  const nextPrayer = prayerTimes ? getNextPrayer(prayerTimes) : null
-
-  // Prepare prayer list
-  const prayerList = prayerTimes ? [
-    {
-      name: 'Fajr',
-      time: prayerTimes.fajr,
-      iqamah: '6:10 AM',
-      isNext: nextPrayer?.name === 'Fajr',
-    },
-    {
-      name: 'Dhuhr',
-      time: prayerTimes.dhuhr,
-      iqamah: '12:30 PM',
-      isNext: nextPrayer?.name === 'Dhuhr',
-    },
-    {
-      name: 'Asr',
-      time: prayerTimes.asr,
-      iqamah: '3:00 PM',
-      isNext: nextPrayer?.name === 'Asr',
-    },
-    {
-      name: 'Maghrib',
-      time: prayerTimes.maghrib,
-      iqamah: '+5',
-      isNext: nextPrayer?.name === 'Maghrib',
-    },
-    {
-      name: 'Isha',
-      time: prayerTimes.isha,
-      iqamah: '8:00 PM',
-      isNext: nextPrayer?.name === 'Isha',
-    },
-  ] : []
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center relative">
+        <CalligraphyPattern opacity={0.15} />
+        <div className="relative z-10">
+          <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with Countdown */}
-      <PrayerHeader
-        mosqueName="Your Local Mosque"
-        nextPrayerName={nextPrayer?.name || 'Fajr'}
-        nextPrayerTime={nextPrayer?.time || '05:30'}
-        hijriDate={hijriDate}
-        gregorianDate={gregorian}
-      />
+    <div className="min-h-screen pb-20 relative">
+      <CalligraphyPattern opacity={0.15} />
+      
+      <div className="relative z-10">
+        <PrayerHeader
+          mosqueName={locationName}
+          prayerTimes={prayerTimes}
+        />
 
-      {/* Tabs */}
-      <PrayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        {!loading && prayerTimes.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-white px-6">
+            <p className="text-lg text-center">No prayer times available.</p>
+          </div>
+        )}
 
-      {/* Content based on active tab */}
-      {activeTab === 'times' && prayerList.length > 0 && (
-        <PrayerList prayers={prayerList} />
-      )}
-
-      {activeTab === 'information' && (
-        <div className="p-6 text-center text-gray-500">
-          <p>Information section coming soon</p>
-        </div>
-      )}
-
-      {activeTab === 'news' && (
-        <div className="p-6 text-center text-gray-500">
-          <p>News section coming soon</p>
-        </div>
-      )}
-
-      {activeTab === 'calendar' && (
-        <div className="p-6 text-center text-gray-500">
-          <p>Calendar section coming soon</p>
-        </div>
-      )}
+        {!loading && prayerTimes.length > 0 && <PrayerList prayers={prayerTimes} />}
+      </div>
     </div>
   )
 }
-

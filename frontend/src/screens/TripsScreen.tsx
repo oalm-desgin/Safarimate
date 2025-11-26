@@ -1,224 +1,277 @@
-import { useState, useEffect } from 'react'
-import PageTitle from '../components/UI/PageTitle'
-import TripCard from '../components/UI/TripCard'
-import Loading from '../components/Loading'
-import ErrorMessage from '../components/ErrorMessage'
-import { Plus, Trash2 } from 'lucide-react'
-import { getTrips, createTrip, deleteTrip } from '../api/tripApi'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useTravelStore } from '../store/travelStore'
+import IslamicPattern from '../components/UI/IslamicPattern'
+import { MapPin, Globe, Plane, ChevronRight, Upload } from 'lucide-react'
+import { getCityImageUrl, cityNeedsImage } from '../data/cityData'
 
-interface Trip {
-  id: string
-  name: string
-  origin: string
-  destination: string
-  date: string
-  [key: string]: any
-}
+const COUNTRIES = [
+  'Saudi Arabia', 'United Arab Emirates', 'Turkey', 'Egypt', 'Morocco',
+  'Indonesia', 'Malaysia', 'Pakistan', 'Qatar', 'Jordan',
+  'United States', 'United Kingdom', 'Canada', 'France', 'Germany'
+].sort()
+
+const POPULAR_CITIES = [
+  { name: 'Mecca', country: 'Saudi Arabia' },
+  { name: 'Medina', country: 'Saudi Arabia' },
+  { name: 'Dubai', country: 'United Arab Emirates' },
+  { name: 'Abu Dhabi', country: 'United Arab Emirates' },
+  { name: 'Istanbul', country: 'Turkey' },
+  { name: 'Cairo', country: 'Egypt' },
+  { name: 'Marrakech', country: 'Morocco' },
+  { name: 'Kuala Lumpur', country: 'Malaysia' },
+  { name: 'Jakarta', country: 'Indonesia' },
+  { name: 'Doha', country: 'Qatar' },
+]
 
 export default function TripsScreen() {
-  const [trips, setTrips] = useState<Trip[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [formLoading, setFormLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    origin: '',
-    destination: '',
-    date: '',
-  })
+  const navigate = useNavigate()
+  const { homeCountry, destinationCity, destinationCountry, setHomeCountry, setDestination, clearDestination, hasActiveTrip } = useTravelStore()
+  
+  const [selectedCountry, setSelectedCountry] = useState(homeCountry || '')
+  const [selectedCity, setSelectedCity] = useState('')
+  const [selectedDestCountry, setSelectedDestCountry] = useState('')
+  const [showCityInput, setShowCityInput] = useState(false)
 
-  useEffect(() => {
-    fetchTrips()
-  }, [])
-
-  async function fetchTrips() {
-    setLoading(true)
-    setError('')
-    try {
-      const response = await getTrips()
-      setTrips(response.data || [])
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to load trips'
-      )
-      setTrips([])
-    } finally {
-      setLoading(false)
+  const handleSetHomeCountry = () => {
+    if (selectedCountry) {
+      setHomeCountry(selectedCountry)
     }
   }
 
-  async function handleCreateTrip(e: React.FormEvent) {
-    e.preventDefault()
-    setFormLoading(true)
-    try {
-      await createTrip(formData)
-      setFormData({ name: '', origin: '', destination: '', date: '' })
-      setShowForm(false)
-      fetchTrips()
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to create trip'
-      )
-    } finally {
-      setFormLoading(false)
+  const handlePlanTrip = () => {
+    if (selectedCity && selectedDestCountry) {
+      setDestination(selectedCity, selectedDestCountry)
+      navigate('/welcome')
     }
   }
 
-  async function handleDeleteTrip(id: string) {
-    if (!window.confirm('Are you sure you want to delete this trip?')) {
-      return
-    }
-    try {
-      await deleteTrip(id)
-      fetchTrips()
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to delete trip'
-      )
-    }
+  const handleCitySelect = (city: string, country: string) => {
+    setSelectedCity(city)
+    setSelectedDestCountry(country)
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <PageTitle
-        title="My Trips"
-        subtitle="Plan and manage your journeys"
-      />
-      
-      <div className="px-6 py-4 space-y-4">
-        {/* Add New Trip Button */}
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="w-full btn-primary flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create New Trip</span>
-        </button>
-
-        {/* Create Trip Form */}
-        {showForm && (
-          <form onSubmit={handleCreateTrip} className="card space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Trip Name
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="e.g., Umrah Journey"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Origin
-              </label>
-              <input
-                type="text"
-                value={formData.origin}
-                onChange={(e) =>
-                  setFormData({ ...formData, origin: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="e.g., New York"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Destination
-              </label>
-              <input
-                type="text"
-                value={formData.destination}
-                onChange={(e) =>
-                  setFormData({ ...formData, destination: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="e.g., Mecca"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) =>
-                  setFormData({ ...formData, date: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 btn-primary"
-                disabled={formLoading}
-              >
-                {formLoading ? 'Creating...' : 'Create Trip'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-3 rounded-2xl border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Error Message */}
-        {error && <ErrorMessage message={error} onDismiss={() => setError('')} />}
-
-        {/* Loading State */}
-        {loading && <Loading message="Loading trips..." />}
-
-        {/* Trip Cards */}
-        {!loading && trips.length === 0 && (
-          <div className="text-center py-4 text-gray-600">
-            No trips found. Create your first trip!
+  // If there's an active trip, show quick access
+  if (hasActiveTrip() && destinationCity) {
+    return (
+      <div className="min-h-screen pb-20">
+        {/* Header */}
+        <div className="islamic-header px-6 py-10 relative mb-6">
+          <IslamicPattern />
+          <div className="relative z-20">
+            <h1 className="text-3xl font-bold text-white mb-2">Active Trip</h1>
+            <p className="text-gray-300 text-sm">Continue your journey</p>
           </div>
-        )}
+        </div>
 
-        {!loading && trips.length > 0 && (
-          <div className="space-y-3">
-            {trips.map((trip) => (
-              <div key={trip.id} className="relative">
-                <TripCard
-                  name={trip.name}
-                  origin={trip.origin}
-                  destination={trip.destination}
-                  date={trip.date}
+        <div className="px-6 space-y-4">
+          {/* Active Trip Card with City Image */}
+          <div className="relative h-48 rounded-islamic overflow-hidden border-2 border-gold shadow-islamic">
+            {/* City Background Image */}
+            <img 
+              src={getCityImageUrl(destinationCity)} 
+              alt={destinationCity}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* Dark Overlay */}
+            <div className="absolute inset-0 bg-black/50" />
+            
+            {/* Content */}
+            <div className="relative z-10 h-full flex flex-col justify-between p-6">
+              <div className="flex items-center gap-3">
+                <Plane className="w-8 h-8 text-gold" strokeWidth={1.5} />
+                <div>
+                  <h2 className="text-3xl font-bold text-gold">{destinationCity}</h2>
+                  <p className="text-white text-sm">{destinationCountry}</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => navigate('/travel-dashboard')}
+                className="w-full bg-gold text-primary font-bold py-3 px-6 rounded-islamic flex items-center justify-center gap-2 hover:bg-gold/90 transition-colors"
+              >
+                <span>View Travel Dashboard</span>
+                <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
+
+          {/* Plan New Trip */}
+          <button
+            onClick={() => {
+              clearDestination()
+              setSelectedCity('')
+              setSelectedDestCountry('')
+            }}
+            className="w-full btn-secondary"
+          >
+            Plan a New Trip
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // If no home country set, show country selection
+  if (!homeCountry) {
+    return (
+      <div className="min-h-screen pb-20">
+        <div className="islamic-header px-6 py-10 relative mb-6">
+          <IslamicPattern />
+          <div className="relative z-20">
+            <h1 className="text-3xl font-bold text-white mb-2">Welcome to SafariMate</h1>
+            <p className="text-gray-300 text-sm">Let's get started with your home country</p>
+          </div>
+        </div>
+
+        <div className="px-6">
+          <div className="card-lg mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="icon-wrapper-gold">
+                <Globe className="w-6 h-6" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="font-bold text-white">Select Home Country</h3>
+                <p className="text-sm text-gray-300">Where are you traveling from?</p>
+              </div>
+            </div>
+
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="w-full px-4 py-3 rounded-islamic bg-primary-dark border border-gold/30 text-white focus:outline-none focus:ring-2 focus:ring-gold mb-4"
+            >
+              <option value="">Choose your country</option>
+              {COUNTRIES.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleSetHomeCountry}
+              disabled={!selectedCountry}
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show destination selection
+  return (
+    <div className="min-h-screen pb-20">
+      <div className="islamic-header px-6 py-10 relative mb-6">
+        <IslamicPattern />
+        <div className="relative z-20">
+          <h1 className="text-3xl font-bold text-white mb-2">Plan Your Trip</h1>
+          <p className="text-gray-300 text-sm">Where would you like to go?</p>
+        </div>
+      </div>
+
+      <div className="px-6 space-y-6">
+        {/* Home Country Display */}
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Globe className="w-5 h-5 text-gold" strokeWidth={1.5} />
+              <div>
+                <p className="text-xs text-gray-400">Home Country</p>
+                <p className="font-medium text-white">{homeCountry}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Popular Destinations */}
+        <div>
+          <h3 className="font-bold text-white mb-3 px-2">Popular Destinations</h3>
+          <div className="space-y-2">
+            {POPULAR_CITIES.map((city) => (
+              <div
+                key={`${city.name}-${city.country}`}
+                onClick={() => handleCitySelect(city.name, city.country)}
+                className={`relative h-24 rounded-islamic overflow-hidden cursor-pointer transition-all hover:scale-[1.02] ${
+                  selectedCity === city.name && selectedDestCountry === city.country
+                    ? 'ring-2 ring-gold'
+                    : ''
+                }`}
+              >
+                {/* City Background Image */}
+                <img 
+                  src={getCityImageUrl(city.name)} 
+                  alt={city.name}
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
-                <button
-                  onClick={() => handleDeleteTrip(trip.id)}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                  aria-label="Delete trip"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {/* Dark Overlay */}
+                <div className="absolute inset-0 bg-black/40" />
+                
+                {/* Content */}
+                <div className="relative z-10 h-full flex items-center justify-between px-4">
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-gold" strokeWidth={1.5} />
+                    <div className="text-left">
+                      <p className="font-bold text-white text-lg">{city.name}</p>
+                      <p className="text-sm text-gray-200">{city.country}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gold" strokeWidth={1.5} />
+                </div>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Custom City Input */}
+        {showCityInput && (
+          <div className="card-lg">
+            <h3 className="font-bold text-white mb-4">Enter Custom Destination</h3>
+            <input
+              type="text"
+              placeholder="City name"
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              className="w-full px-4 py-3 rounded-islamic bg-primary-dark border border-gold/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold mb-3"
+            />
+            <select
+              value={selectedDestCountry}
+              onChange={(e) => setSelectedDestCountry(e.target.value)}
+              className="w-full px-4 py-3 rounded-islamic bg-primary-dark border border-gold/30 text-white focus:outline-none focus:ring-2 focus:ring-gold"
+            >
+              <option value="">Select country</option>
+              {COUNTRIES.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {!showCityInput && (
+          <button
+            onClick={() => setShowCityInput(true)}
+            className="w-full btn-secondary"
+          >
+            Enter Custom Destination
+          </button>
+        )}
+
+        {/* Plan Trip Button */}
+        {selectedCity && selectedDestCountry && (
+          <button
+            onClick={handlePlanTrip}
+            className="w-full btn-primary flex items-center justify-center gap-2"
+          >
+            <Plane className="w-5 h-5" strokeWidth={1.5} />
+            <span>Start Journey to {selectedCity}</span>
+          </button>
         )}
       </div>
     </div>
   )
 }
-

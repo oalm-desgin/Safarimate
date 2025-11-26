@@ -1,73 +1,67 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import PageTitle from '../components/UI/PageTitle'
-import { User, LogOut, Settings, Moon, Sun } from 'lucide-react'
+import { User, Settings, LogOut, Info, Shield } from 'lucide-react'
+import IslamicPattern from '../components/UI/IslamicPattern'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
-  const { user, logout, setTheme } = useAuthStore()
+  const { user, logout } = useAuthStore()
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
+  const menuItems = [
+    { icon: Settings, label: 'Settings', action: () => {} },
+    { icon: Info, label: 'About SafariMate', action: () => {} },
+    { icon: Shield, label: 'Privacy Policy', action: () => {} },
+    { icon: LogOut, label: 'Logout', action: handleLogout, danger: true },
+  ]
+
   return (
-    <div className="min-h-screen bg-background">
-      <PageTitle
-        title="Profile"
-        subtitle="Manage your account settings"
-      />
-      
-      <div className="px-6 py-4 space-y-4">
-        {/* User Info Card */}
-        <div className="card-lg">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="icon-wrapper">
-              <User className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">{user?.name || 'User'}</h3>
-              <p className="text-sm text-gray-600">{user?.email || 'user@example.com'}</p>
-            </div>
+    <div className="min-h-screen pb-20">
+      {/* Islamic Header with User Info */}
+      <div className="islamic-header px-6 py-10 relative mb-6">
+        <IslamicPattern />
+        <div className="relative z-20 text-center">
+          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gold/20 flex items-center justify-center border-4 border-gold/40">
+            <User className="w-12 h-12 text-gold" strokeWidth={1.5} />
           </div>
+          <h1 className="text-2xl font-bold text-white mb-1">
+            {user?.name || 'Traveler'}
+          </h1>
+          <p className="text-gray-300 text-sm">{user?.email || 'user@example.com'}</p>
         </div>
+      </div>
 
-        {/* Settings */}
-        <div className="card-lg space-y-4">
-          <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
-            <div className="flex items-center gap-3">
-              <Settings className="w-5 h-5 text-primary" />
-              <span className="font-medium text-gray-900">Settings</span>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => setTheme(user?.theme === 'dark' ? 'light' : 'dark')}
-            className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              {user?.theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-primary" />
-              ) : (
-                <Moon className="w-5 h-5 text-primary" />
-              )}
-              <span className="font-medium text-gray-900">Theme</span>
-            </div>
-            <span className="text-sm text-gray-600 capitalize">{user?.theme || 'light'}</span>
-          </button>
-        </div>
+      {/* Menu Items */}
+      <div className="px-6 space-y-3">
+        {menuItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.label}
+              onClick={item.action}
+              className={`w-full card flex items-center gap-4 py-4 hover:shadow-gold transition-all duration-300 ${
+                item.danger ? 'border-red-500/50 hover:border-red-500' : ''
+              }`}
+            >
+              <div className={`icon-wrapper-gold ${item.danger ? 'bg-red-500/20 text-red-400 border-red-500/40' : ''}`}>
+                <Icon className="w-5 h-5" strokeWidth={1.5} />
+              </div>
+              <span className={`font-semibold ${item.danger ? 'text-red-400' : 'text-white'}`}>
+                {item.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
-        {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          className="w-full btn-secondary flex items-center justify-center gap-2"
-        >
-          <LogOut className="w-5 h-5" />
-          <span>Logout</span>
-        </button>
+      {/* App Version */}
+      <div className="px-6 mt-8 text-center">
+        <p className="text-xs text-gray-400">SafariMate v1.0.0</p>
       </div>
     </div>
   )
 }
-

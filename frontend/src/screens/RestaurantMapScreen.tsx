@@ -7,6 +7,8 @@ import { fetchNearbyHalalPlaces, HalalPlace } from '../api/osmService'
 import RestaurantBottomSheet from '../components/RestaurantBottomSheet'
 import { Navigation, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTravelStore } from '../store/travelStore'
+import { getCityCoordinates } from '../data/cityData'
 
 // Fix for default marker icons in Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -54,6 +56,7 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
 export default function RestaurantMapScreen() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { destinationCity, hasActiveTrip } = useTravelStore()
   const [restaurants, setRestaurants] = useState<HalalPlace[]>([])
   const [selectedRestaurant, setSelectedRestaurant] = useState<HalalPlace | null>(null)
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false)
@@ -61,8 +64,20 @@ export default function RestaurantMapScreen() {
   const [mapZoom, setMapZoom] = useState(13)
   const [loading, setLoading] = useState(false)
 
-  // Update map center when user location is available
+  // Update map center when user location is available or use destination coordinates
   useEffect(() => {
+    // Check if there's an active trip and use destination coordinates
+    if (hasActiveTrip() && destinationCity) {
+      const destCoords = getCityCoordinates(destinationCity)
+      if (destCoords) {
+        setMapCenter([destCoords.lat, destCoords.lng])
+        setMapZoom(13)
+        loadNearbyRestaurants(destCoords.lat, destCoords.lng)
+        return
+      }
+    }
+    
+    // Otherwise use user's actual location
     if (location.latitude && location.longitude) {
       setMapCenter([location.latitude, location.longitude])
       setMapZoom(14)
@@ -71,7 +86,7 @@ export default function RestaurantMapScreen() {
       // Fallback to default city
       loadNearbyRestaurants(mapCenter[0], mapCenter[1])
     }
-  }, [location.latitude, location.longitude])
+  }, [location.latitude, location.longitude, destinationCity, hasActiveTrip])
 
   const loadNearbyRestaurants = async (lat: number, lon: number) => {
     setLoading(true)
@@ -79,15 +94,83 @@ export default function RestaurantMapScreen() {
       const fetchedRestaurants = await fetchNearbyHalalPlaces(lat, lon, 5)
       
       // Add mock ratings for demo (in production, get from reviews API)
-      const restaurantsWithRatings = fetchedRestaurants.map((restaurant) => ({
+      let restaurantsWithRatings = fetchedRestaurants.map((restaurant) => ({
         ...restaurant,
         rating: restaurant.rating || (Math.random() * 2 + 3), // Random rating 3-5 if not available
       }))
+      
+      // If no restaurants found, use mock data for demonstration
+      if (restaurantsWithRatings.length === 0) {
+        restaurantsWithRatings = [
+          {
+            id: 'mock-1',
+            name: 'Boustan Restaurant',
+            lat: lat + 0.008,
+            lon: lon - 0.012,
+            cuisine: 'Lebanese',
+            distance: 0.85,
+            rating: 4.5,
+          },
+          {
+            id: 'mock-2',
+            name: 'Marché Adonis',
+            lat: lat - 0.012,
+            lon: lon + 0.008,
+            address: '2001 Rue Sauvé Ouest',
+            cuisine: 'Middle Eastern',
+            distance: 1.2,
+            rating: 4.3,
+          },
+          {
+            id: 'mock-3',
+            name: 'Amir Restaurant',
+            lat: lat + 0.015,
+            lon: lon + 0.018,
+            address: '5455 Rue de Gaspé',
+            cuisine: 'Mediterranean',
+            distance: 1.8,
+            rating: 4.7,
+          },
+          {
+            id: 'mock-4',
+            name: 'Istanbul Restaurant',
+            lat: lat - 0.018,
+            lon: lon - 0.015,
+            address: '1234 Boulevard Saint-Laurent',
+            cuisine: 'Turkish',
+            distance: 2.1,
+            rating: 4.4,
+          },
+        ]
+      }
       
       setRestaurants(restaurantsWithRatings)
       setIsBottomSheetOpen(true)
     } catch (error) {
       console.error('Error loading restaurants:', error)
+      // Set mock data on error
+      setRestaurants([
+        {
+          id: 'mock-1',
+          name: 'Boustan Restaurant',
+          lat: lat + 0.008,
+          lon: lon - 0.012,
+          cuisine: 'Lebanese',
+          distance: 0.85,
+          rating: 4.5,
+        },
+        {
+          id: 'mock-2',
+          name: 'Marché Adonis',
+          lat: lat - 0.012,
+          lon: lon + 0.008,
+          address: '2001 Rue Sauvé Ouest',
+          cuisine: 'Middle Eastern',
+          distance: 1.2,
+          rating: 4.3,
+        },
+      ])
+      setIsBottomSheetOpen(true)
     } finally {
       setLoading(false)
     }
@@ -210,9 +293,9 @@ export default function RestaurantMapScreen() {
 
       {/* Bottom Sheet */}
       <RestaurantBottomSheet
-        restaurants={restaurants}
-        selectedRestaurant={selectedRestaurant}
-        onSelectRestaurant={handleSelectRestaurant}
+        halalPlaces={restaurants}
+        selectedPlace={selectedRestaurant}
+        onSelectPlace={handleSelectRestaurant}
         isOpen={isBottomSheetOpen}
         onToggle={() => setIsBottomSheetOpen(!isBottomSheetOpen)}
       />

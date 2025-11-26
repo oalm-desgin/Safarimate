@@ -3,8 +3,23 @@ import BottomNavBar from './BottomNavBar'
 
 export default function MobileLayout() {
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-background">
-      <main className="flex-1 overflow-y-auto pb-20">
+    <div 
+      className="bg-background relative"
+      style={{
+        height: '852px',
+        width: '393px',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      <main 
+        className="overflow-y-auto"
+        style={{
+          flex: 1,
+          paddingBottom: '80px',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <Outlet />
       </main>
       <BottomNavBar />

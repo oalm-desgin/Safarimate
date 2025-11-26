@@ -1,128 +1,101 @@
 import { useState, useEffect } from 'react'
 
-interface PrayerTimes {
-  fajr: string
-  dhuhr: string
-  asr: string
-  maghrib: string
-  isha: string
+interface PrayerTime {
+  name: string
+  time: string
 }
 
-interface NextPrayer {
+interface NextPrayerInfo {
   name: string
   time: string
   diffMs: number
 }
 
-interface TimerState {
-  hours: number
-  minutes: number
-  seconds: number
-  formatted: string
-}
-
-// Convert HH:mm time string to Date object for today
-function timeToDate(time: string): Date {
-  const [hours, minutes] = time.split(':').map(Number)
-  const date = new Date()
-  date.setHours(hours, minutes, 0, 0)
-  return date
-}
-
-// Get the next prayer based on current time
-export function getNextPrayer(prayerTimes: PrayerTimes): NextPrayer | null {
+// Function to get the next prayer time and its difference in milliseconds
+export const getNextPrayer = (prayerTimes: PrayerTime[]): NextPrayerInfo | null => {
   const now = new Date()
-  const prayers = [
-    { name: 'Fajr', time: prayerTimes.fajr },
-    { name: 'Dhuhr', time: prayerTimes.dhuhr },
-    { name: 'Asr', time: prayerTimes.asr },
-    { name: 'Maghrib', time: prayerTimes.maghrib },
-    { name: 'Isha', time: prayerTimes.isha },
-  ]
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
-  // Find the next prayer after current time
-  for (const prayer of prayers) {
-    const prayerDate = timeToDate(prayer.time)
+  let nextPrayer: NextPrayerInfo | null = null
+  let minDiff = Infinity
+
+  for (const prayer of prayerTimes) {
+    if (!prayer.time || typeof prayer.time !== 'string') continue
+    
+    const [hours, minutes] = prayer.time.split(':').map(Number)
+    if (isNaN(hours) || isNaN(minutes)) continue
+    
+    const prayerDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
+
+    // If prayer time has already passed today, consider it for tomorrow
+    if (prayerDate.getTime() < now.getTime()) {
+      prayerDate.setDate(prayerDate.getDate() + 1)
+    }
+
     const diffMs = prayerDate.getTime() - now.getTime()
 
-    if (diffMs > 0) {
-      return {
+    if (diffMs > 0 && diffMs < minDiff) {
+      minDiff = diffMs
+      nextPrayer = {
         name: prayer.name,
         time: prayer.time,
-        diffMs,
+        diffMs: diffMs,
       }
     }
   }
 
-  // If no prayer found today, return Fajr for tomorrow
-  const tomorrowFajr = timeToDate(prayerTimes.fajr)
-  tomorrowFajr.setDate(tomorrowFajr.getDate() + 1)
-  const diffMs = tomorrowFajr.getTime() - now.getTime()
-
-  return {
-    name: 'Fajr',
-    time: prayerTimes.fajr,
-    diffMs,
-  }
+  return nextPrayer
 }
 
-// Custom hook for countdown timer
-export function useNextPrayerTimer(nextPrayerTime: string | null): TimerState {
-  const [timer, setTimer] = useState<TimerState>({
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-    formatted: '00:00:00',
-  })
+export const useNextPrayerTimer = (initialPrayerTimes: PrayerTime[]) => {
+  const [nextPrayer, setNextPrayer] = useState<NextPrayerInfo | null>(null)
+  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0, formatted: '00:00:00' })
+
+  const updateNextPrayer = () => {
+    const newNextPrayer = getNextPrayer(initialPrayerTimes)
+    setNextPrayer(newNextPrayer)
+  }
 
   useEffect(() => {
-    if (!nextPrayerTime) return
+    if (!initialPrayerTimes || initialPrayerTimes.length === 0) return
 
-    const calculateTimer = () => {
-      const now = new Date()
-      const targetTime = timeToDate(nextPrayerTime)
-      let diffMs = targetTime.getTime() - now.getTime()
+    updateNextPrayer() // Initial calculation
 
-      // If prayer time has passed today, set it for tomorrow
-      if (diffMs < 0) {
-        targetTime.setDate(targetTime.getDate() + 1)
-        diffMs = targetTime.getTime() - now.getTime()
-      }
+    const interval = setInterval(() => {
+      setNextPrayer((prevNextPrayer) => {
+        if (!prevNextPrayer) {
+          updateNextPrayer() // Recalculate if no next prayer
+          return null
+        }
 
-      if (diffMs <= 0) {
-        setTimer({
-          hours: 0,
-          minutes: 0,
-          seconds: 0,
-          formatted: '00:00:00',
-        })
-        return
-      }
+        const newDiffMs = prevNextPrayer.diffMs - 1000
+        if (newDiffMs <= 0) {
+          updateNextPrayer() // Recalculate when countdown hits 0
+          return null
+        }
+        return { ...prevNextPrayer, diffMs: newDiffMs }
+      })
+    }, 1000)
 
-      const totalSeconds = Math.floor(diffMs / 1000)
+    return () => clearInterval(interval)
+  }, [initialPrayerTimes])
+
+  useEffect(() => {
+    if (nextPrayer) {
+      const totalSeconds = Math.floor(nextPrayer.diffMs / 1000)
       const hours = Math.floor(totalSeconds / 3600)
       const minutes = Math.floor((totalSeconds % 3600) / 60)
       const seconds = totalSeconds % 60
 
-      const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      const formatted = [hours, minutes, seconds]
+        .map((unit) => String(unit).padStart(2, '0'))
+        .join(':')
 
-      setTimer({
-        hours,
-        minutes,
-        seconds,
-        formatted,
-      })
+      setCountdown({ hours, minutes, seconds, formatted })
+    } else {
+      setCountdown({ hours: 0, minutes: 0, seconds: 0, formatted: '00:00:00' })
     }
+  }, [nextPrayer])
 
-    // Calculate immediately
-    calculateTimer()
-
-    // Update every second
-    const interval = setInterval(calculateTimer, 1000)
-
-    return () => clearInterval(interval)
-  }, [nextPrayerTime])
-
-  return timer
+  return { nextPrayer, countdown }
 }
-
