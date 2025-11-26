@@ -6,10 +6,13 @@ export default function MobileLayout() {
     <div 
       className="bg-background relative"
       style={{
-        height: '852px',
-        width: '393px',
+        height: '100vh',
+        width: '100%',
+        maxWidth: '420px',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        margin: '0 auto',
+        overflow: 'hidden'
       }}
     >
       <main 
@@ -17,7 +20,8 @@ export default function MobileLayout() {
         style={{
           flex: 1,
           paddingBottom: '80px',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          overflowX: 'hidden'
         }}
       >
         <Outlet />

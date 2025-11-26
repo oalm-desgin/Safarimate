@@ -13,13 +13,13 @@ export default function BottomNavBar() {
   return (
     <nav 
       style={{
-        position: 'fixed',
+        position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
         zIndex: 999,
-        width: '393px',
-        margin: '0 auto',
+        width: '100%',
+        maxWidth: '420px',
         pointerEvents: 'auto'
       }}
     >

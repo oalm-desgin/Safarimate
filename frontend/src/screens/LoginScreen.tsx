@@ -44,7 +44,9 @@ export default function LoginScreen() {
     <div 
       className="w-full relative overflow-hidden"
       style={{
-        height: '852px',
+        height: '100vh',
+        maxWidth: '420px',
+        margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
         background: 'linear-gradient(180deg, #0A2E29 0%, #061E1A 100%)'

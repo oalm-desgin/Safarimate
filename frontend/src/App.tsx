@@ -17,19 +17,24 @@ import TravelDashboardScreen from './screens/TravelDashboardScreen'
 function App() {
   return (
     <Router>
-      {/* App Container */}
+      {/* Mobile-Only Container */}
       <div 
-        className="min-h-screen flex items-center justify-center bg-gray-900"
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)',
+          overflow: 'hidden'
+        }}
       >
-        {/* App Content */}
+        {/* Strict Mobile App - Max 420px */}
         <div 
           className="overflow-hidden bg-background"
           style={{
-            width: '393px',
-            height: '852px',
-            maxHeight: '98vh',
+            width: '100vw',
+            maxWidth: '420px',
+            height: '100vh',
             overflow: 'auto',
-            WebkitOverflowScrolling: 'touch'
+            WebkitOverflowScrolling: 'touch',
+            margin: '0 auto'
           }}
         >
             <Routes>
